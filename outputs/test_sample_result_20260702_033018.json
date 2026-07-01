@@ -1,0 +1,48 @@
+{
+  "model_name": "YOLOv8 General Detection",
+  "object_count": 4,
+  "processing_time_ms": 6345.3,
+  "detections": [
+    {
+      "label": "bus",
+      "confidence": 0.8734,
+      "bbox": [
+        22,
+        231,
+        805,
+        756
+      ]
+    },
+    {
+      "label": "person",
+      "confidence": 0.8657,
+      "bbox": [
+        48,
+        398,
+        245,
+        902
+      ]
+    },
+    {
+      "label": "person",
+      "confidence": 0.8528,
+      "bbox": [
+        669,
+        392,
+        809,
+        877
+      ]
+    },
+    {
+      "label": "person",
+      "confidence": 0.8252,
+      "bbox": [
+        221,
+        405,
+        344,
+        857
+      ]
+    }
+  ],
+  "source_image": "tests/test_sample.jpg"
+}

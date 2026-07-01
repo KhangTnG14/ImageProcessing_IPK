@@ -15,7 +15,7 @@ pip install -r requirements.txt
 python test_pipeline.py
 ```
 
-## Chạy thủ công với ảnh của bạn
+## Chạy thủ công với ảnh
 
 ```python
 from setup import setup_models
@@ -44,16 +44,23 @@ print(f"Ảnh output: {img_path}")
 ```
 ImgPK/
 ├── core/
-│   ├── base_model.py     ← Hợp đồng cho mọi model (ABC)
-│   └── registry.py       ← Danh bạ model
+│   ├── base_model.py     <- Hợp đồng cho mọi model (ABC)
+│   └── registry.py       <- Danh bạ model
 ├── models/
-│   └── yolo_general.py   ← Model đầu tiên: YOLOv8 General
+│   └── yolo_general.py   <- Model đầu tiên: YOLOv8 General
 ├── utils/
-│   └── image_utils.py    ← Đọc/lưu ảnh và JSON
-├── outputs/              ← Kết quả được lưu ở đây
-├── tests/                ← Ảnh dùng để test
-├── pipeline.py           ← Pipeline trung tâm
-├── setup.py              ← Đăng ký model
-├── test_pipeline.py      ← Script kiểm tra
+│   └── image_utils.py    <- Đọc/lưu ảnh và JSON
+├── outputs/              <- Kết quả được lưu ở đây
+├── tests/                <- Ảnh dùng để test
+├── pipeline.py           <- Pipeline trung tâm
+├── setup.py              <- Đăng ký model
+├── test_pipeline.py      <- Script kiểm tra
 └── requirements.txt
 ```
+
+Các đường truy cập:
+
+1. http://0.0.0.0:8000
+2. http://localhost:8000/docs
+3. http://localhost:8000/health
+4. http://localhost:8000/models
