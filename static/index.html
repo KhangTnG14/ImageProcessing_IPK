@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ImgPK — AI Image Analysis</title>
+<style>
+  /* ── Reset & Base ─────────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #0f1117;
+    --surface:   #1a1d27;
+    --surface2:  #22263a;
+    --border:    #2e3248;
+    --accent:    #6c63ff;
+    --accent2:   #a78bfa;
+    --green:     #22c55e;
+    --yellow:    #f59e0b;
+    --red:       #ef4444;
+    --text:      #e2e8f0;
+    --muted:     #64748b;
+    --radius:    12px;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── Header ───────────────────────────────────────────────── */
+  header {
+    padding: 18px 32px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .logo {
+    width: 38px; height: 38px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 10px;
+    display: grid; place-items: center;
+    font-size: 18px; font-weight: 800; color: #fff;
+    letter-spacing: -1px;
+  }
+  header h1 { font-size: 1.25rem; font-weight: 700; }
+  header h1 span { color: var(--accent2); }
+  .header-badge {
+    margin-left: auto;
+    font-size: 0.72rem;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    padding: 4px 10px;
+    border-radius: 99px;
+    color: var(--muted);
+  }
+  #status-dot {
+    display: inline-block;
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--muted);
+    margin-right: 5px;
+    transition: background .3s;
+  }
+  #status-dot.ok { background: var(--green); }
+
+  /* ── Main layout ──────────────────────────────────────────── */
+  main {
+    flex: 1;
+    max-width: 1200px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 32px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+  }
+
+  /* ── Card ─────────────────────────────────────────────────── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+  }
+  .card-title {
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: var(--muted);
+    margin-bottom: 16px;
+  }
+
+  /* ── Upload zone ──────────────────────────────────────────── */
+  #drop-zone {
+    border: 2px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 48px 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color .2s, background .2s;
+    position: relative;
+  }
+  #drop-zone:hover, #drop-zone.drag-over {
+    border-color: var(--accent);
+    background: rgba(108,99,255,.06);
+  }
+  #drop-zone input[type=file] {
+    position: absolute; inset: 0;
+    opacity: 0; cursor: pointer; width: 100%; height: 100%;
+  }
+  .drop-icon { font-size: 2.5rem; margin-bottom: 12px; }
+  .drop-text { color: var(--muted); font-size: 0.9rem; line-height: 1.6; }
+  .drop-text strong { color: var(--text); }
+
+  /* Preview ảnh đã chọn */
+  #preview-wrap {
+    display: none;
+    align-items: center;
+    gap: 16px;
+    padding: 12px;
+    background: var(--surface2);
+    border-radius: 8px;
+    margin-top: 14px;
+  }
+  #preview-wrap img {
+    width: 72px; height: 72px;
+    object-fit: cover;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+  }
+  #preview-info { flex: 1; }
+  #preview-name { font-weight: 600; font-size: 0.9rem; }
+  #preview-size { color: var(--muted); font-size: 0.8rem; margin-top: 2px; }
+  #btn-clear {
+    background: none; border: 1px solid var(--border);
+    color: var(--muted); padding: 6px 12px;
+    border-radius: 6px; cursor: pointer; font-size: 0.8rem;
+    transition: border-color .2s;
+  }
+  #btn-clear:hover { border-color: var(--red); color: var(--red); }
+
+  /* ── Controls ─────────────────────────────────────────────── */
+  .controls-row {
+    display: flex;
+    gap: 14px;
+    align-items: flex-end;
+    flex-wrap: wrap;
+  }
+  .field { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 180px; }
+  .field label { font-size: 0.8rem; color: var(--muted); font-weight: 500; }
+  select, input[type=range] {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    outline: none;
+    transition: border-color .2s;
+    width: 100%;
+  }
+  select:focus { border-color: var(--accent); }
+
+  #btn-run {
+    padding: 11px 28px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity .2s, transform .1s;
+    white-space: nowrap;
+  }
+  #btn-run:hover:not(:disabled) { opacity: .88; transform: translateY(-1px); }
+  #btn-run:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+
+  /* ── Loading spinner ──────────────────────────────────────── */
+  #loading {
+    display: none;
+    align-items: center;
+    gap: 12px;
+    color: var(--muted);
+    font-size: 0.9rem;
+    padding: 12px 0;
+  }
+  .spinner {
+    width: 20px; height: 20px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin .7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Error banner ─────────────────────────────────────────── */
+  #error-box {
+    display: none;
+    background: rgba(239,68,68,.1);
+    border: 1px solid rgba(239,68,68,.3);
+    color: #fca5a5;
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 0.88rem;
+  }
+
+  /* ── Result section ───────────────────────────────────────── */
+  #result-section { display: none; }
+
+  /* Badges thống kê */
+  .stats-row {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+  }
+  .stat-badge {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .stat-label { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+  .stat-value { font-size: 1.4rem; font-weight: 700; color: var(--accent2); }
+  .stat-unit  { font-size: 0.72rem; color: var(--muted); }
+
+  /* Images side by side */
+  .images-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  @media (max-width: 700px) { .images-grid { grid-template-columns: 1fr; } }
+
+  .img-panel {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .img-panel-title {
+    padding: 10px 14px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .img-panel img {
+    width: 100%;
+    height: 300px;
+    object-fit: contain;
+    background: #0a0c13;
+    display: block;
+  }
+  .btn-dl {
+    font-size: 0.75rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 3px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: border-color .2s;
+  }
+  .btn-dl:hover { border-color: var(--accent2); color: var(--accent2); }
+
+  /* ── Detection table ──────────────────────────────────────── */
+  .table-wrap {
+    overflow-x: auto;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+  }
+  thead { background: var(--surface2); }
+  th {
+    padding: 10px 14px;
+    text-align: left;
+    font-size: 0.75rem;
+    color: var(--muted);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    border-bottom: 1px solid var(--border);
+  }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--surface2); }
+
+  /* Confidence bar */
+  .conf-wrap { display: flex; align-items: center; gap: 8px; min-width: 100px; }
+  .conf-bar-bg { flex: 1; height: 4px; background: var(--border); border-radius: 2px; }
+  .conf-bar { height: 100%; border-radius: 2px; background: var(--accent); transition: width .4s; }
+  .conf-text { font-size: 0.8rem; font-variant-numeric: tabular-nums; min-width: 38px; text-align: right; }
+
+  /* Label badge */
+  .label-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 99px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    background: rgba(108,99,255,.15);
+    color: var(--accent2);
+    border: 1px solid rgba(108,99,255,.3);
+  }
+
+  /* bbox mono */
+  .bbox { font-family: monospace; font-size: 0.8rem; color: var(--muted); }
+
+  /* empty state */
+  .empty-state {
+    text-align: center;
+    padding: 32px;
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+
+  /* ── Download JSON btn ────────────────────────────────────── */
+  #btn-download-json {
+    margin-top: 16px;
+    padding: 9px 20px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: border-color .2s;
+  }
+  #btn-download-json:hover { border-color: var(--accent2); color: var(--accent2); }
+</style>
+</head>
+<body>
+
+<!-- ── HEADER ─────────────────────────────────────────────────── -->
+<header>
+  <div class="logo">PK</div>
+  <h1>Img<span>PK</span></h1>
+  <div class="header-badge">
+    <span id="status-dot"></span>
+    <span id="status-text">Đang kết nối...</span>
+  </div>
+</header>
+
+<!-- ── MAIN ───────────────────────────────────────────────────── -->
+<main>
+
+  <!-- Upload card -->
+  <div class="card">
+    <div class="card-title">📁 Chọn ảnh đầu vào</div>
+
+    <div id="drop-zone">
+      <input type="file" id="file-input" accept="image/*" />
+      <div class="drop-icon">🖼️</div>
+      <div class="drop-text">
+        <strong>Kéo & thả ảnh vào đây</strong><br>
+        hoặc bấm để chọn file — JPG, PNG, BMP, WEBP (tối đa 20MB)
+      </div>
+    </div>
+
+    <div id="preview-wrap">
+      <img id="preview-img" src="" alt="preview" />
+      <div id="preview-info">
+        <div id="preview-name">—</div>
+        <div id="preview-size">—</div>
+      </div>
+      <button id="btn-clear">✕ Xoá</button>
+    </div>
+  </div>
+
+  <!-- Controls card -->
+  <div class="card">
+    <div class="card-title">⚙️ Cấu hình</div>
+    <div class="controls-row">
+      <div class="field">
+        <label for="model-select">Model AI</label>
+        <select id="model-select">
+          <option value="yolo_general">YOLOv8 General Detection</option>
+        </select>
+      </div>
+      <button id="btn-run" disabled>▶ Phân tích ảnh</button>
+    </div>
+
+    <div id="loading">
+      <div class="spinner"></div>
+      <span id="loading-text">Đang xử lý...</span>
+    </div>
+    <div id="error-box"></div>
+  </div>
+
+  <!-- Result section -->
+  <div id="result-section">
+
+    <!-- Stats badges -->
+    <div class="stats-row">
+      <div class="stat-badge">
+        <span class="stat-label">Đối tượng</span>
+        <span class="stat-value" id="stat-count">0</span>
+        <span class="stat-unit">phát hiện</span>
+      </div>
+      <div class="stat-badge">
+        <span class="stat-label">Thời gian xử lý</span>
+        <span class="stat-value" id="stat-time">0</span>
+        <span class="stat-unit">mili giây</span>
+      </div>
+      <div class="stat-badge">
+        <span class="stat-label">Model</span>
+        <span class="stat-value" style="font-size:0.95rem" id="stat-model">—</span>
+        <span class="stat-unit">đang dùng</span>
+      </div>
+    </div>
+
+    <!-- Ảnh gốc vs Ảnh annotated -->
+    <div class="images-grid">
+      <div class="img-panel">
+        <div class="img-panel-title">
+          Ảnh gốc
+        </div>
+        <img id="original-img" src="" alt="Ảnh gốc" />
+      </div>
+      <div class="img-panel">
+        <div class="img-panel-title">
+          Ảnh đã phân tích
+          <a id="btn-dl-annotated" class="btn-dl" download="annotated.jpg">⬇ Tải về</a>
+        </div>
+        <img id="annotated-img" src="" alt="Ảnh annotated" />
+      </div>
+    </div>
+
+    <!-- Detection table -->
+    <div class="card">
+      <div class="card-title">📋 Chi tiết kết quả</div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Nhãn</th>
+              <th>Độ tin cậy</th>
+              <th>Bounding Box (x1, y1, x2, y2)</th>
+            </tr>
+          </thead>
+          <tbody id="result-tbody"></tbody>
+        </table>
+      </div>
+
+      <button id="btn-download-json">⬇ Tải kết quả JSON</button>
+    </div>
+
+  </div>
+</main>
+
+<script>
+// ── Config ──────────────────────────────────────────────────────
+const API_BASE = 'http://localhost:8000';
+
+// ── State ────────────────────────────────────────────────────────
+let selectedFile = null;
+let lastResult   = null;
+let lastB64      = null;
+
+// ── DOM refs ─────────────────────────────────────────────────────
+const dropZone       = document.getElementById('drop-zone');
+const fileInput      = document.getElementById('file-input');
+const previewWrap    = document.getElementById('preview-wrap');
+const previewImg     = document.getElementById('preview-img');
+const previewName    = document.getElementById('preview-name');
+const previewSize    = document.getElementById('preview-size');
+const btnClear       = document.getElementById('btn-clear');
+const modelSelect    = document.getElementById('model-select');
+const btnRun         = document.getElementById('btn-run');
+const loading        = document.getElementById('loading');
+const loadingText    = document.getElementById('loading-text');
+const errorBox       = document.getElementById('error-box');
+const resultSection  = document.getElementById('result-section');
+const statCount      = document.getElementById('stat-count');
+const statTime       = document.getElementById('stat-time');
+const statModel      = document.getElementById('stat-model');
+const originalImg    = document.getElementById('original-img');
+const annotatedImg   = document.getElementById('annotated-img');
+const btnDlAnnotated = document.getElementById('btn-dl-annotated');
+const resultTbody    = document.getElementById('result-tbody');
+const btnDownloadJSON= document.getElementById('btn-download-json');
+const statusDot      = document.getElementById('status-dot');
+const statusText     = document.getElementById('status-text');
+
+// ── Health check khi tải trang ───────────────────────────────────
+async function checkHealth() {
+  try {
+    const res = await fetch(`${API_BASE}/health`);
+    if (res.ok) {
+      const data = await res.json();
+      statusDot.className = 'ok';
+      statusText.textContent = `Server OK — ${data.registered_models} model`;
+      await loadModels();
+    } else {
+      throw new Error();
+    }
+  } catch {
+    statusDot.className = '';
+    statusText.textContent = 'Không kết nối được server';
+  }
+}
+
+// ── Load danh sách model vào dropdown ───────────────────────────
+async function loadModels() {
+  try {
+    const res  = await fetch(`${API_BASE}/models`);
+    const data = await res.json();
+    modelSelect.innerHTML = '';
+    data.models.forEach(m => {
+      const opt = document.createElement('option');
+      opt.value       = m.model_id;
+      opt.textContent = m.name;
+      modelSelect.appendChild(opt);
+    });
+  } catch { /* giữ option mặc định */ }
+}
+
+// ── Drag & Drop ──────────────────────────────────────────────────
+dropZone.addEventListener('dragover', e => {
+  e.preventDefault();
+  dropZone.classList.add('drag-over');
+});
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) setFile(file);
+});
+
+fileInput.addEventListener('change', () => {
+  if (fileInput.files[0]) setFile(fileInput.files[0]);
+});
+
+function setFile(file) {
+  // Validate
+  if (!file.type.startsWith('image/')) {
+    showError('Vui lòng chọn file ảnh (JPG, PNG, BMP, WEBP).');
+    return;
+  }
+  if (file.size > 20 * 1024 * 1024) {
+    showError('File quá lớn. Tối đa 20MB.');
+    return;
+  }
+
+  selectedFile = file;
+  hideError();
+  resultSection.style.display = 'none';
+
+  // Hiện preview
+  const reader = new FileReader();
+  reader.onload = e => {
+    previewImg.src     = e.target.result;
+    previewName.textContent = file.name;
+    previewSize.textContent = formatSize(file.size);
+    previewWrap.style.display = 'flex';
+  };
+  reader.readAsDataURL(file);
+
+  btnRun.disabled = false;
+}
+
+btnClear.addEventListener('click', () => {
+  selectedFile = null;
+  fileInput.value = '';
+  previewWrap.style.display = 'none';
+  resultSection.style.display = 'none';
+  btnRun.disabled = true;
+  hideError();
+});
+
+// ── Phân tích ảnh ────────────────────────────────────────────────
+btnRun.addEventListener('click', async () => {
+  if (!selectedFile) return;
+
+  // UI trạng thái loading
+  btnRun.disabled   = true;
+  loading.style.display = 'flex';
+  loadingText.textContent = 'Đang gửi ảnh lên server...';
+  resultSection.style.display = 'none';
+  hideError();
+
+  const formData = new FormData();
+  formData.append('file', selectedFile);
+  formData.append('model_id', modelSelect.value);
+  formData.append('return_image', 'true');
+
+  try {
+    loadingText.textContent = 'Model AI đang xử lý...';
+    const res = await fetch(`${API_BASE}/predict`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.detail || `Lỗi server: ${res.status}`);
+    }
+
+    displayResult(data);
+  } catch (err) {
+    showError(err.message || 'Không thể kết nối đến server.');
+  } finally {
+    loading.style.display = 'none';
+    btnRun.disabled = false;
+  }
+});
+
+// ── Hiển thị kết quả ─────────────────────────────────────────────
+function displayResult(data) {
+  lastResult = data;
+  lastB64    = data.annotated_image_base64;
+
+  // Badges
+  statCount.textContent = data.object_count;
+  statTime.textContent  = data.processing_time_ms.toFixed(1);
+  statModel.textContent = data.model_name.replace('YOLOv8 ', '');
+
+  // Ảnh gốc (dùng lại preview)
+  originalImg.src = previewImg.src;
+
+  // Ảnh annotated từ base64
+  if (lastB64) {
+    const src = `data:image/jpeg;base64,${lastB64}`;
+    annotatedImg.src       = src;
+    btnDlAnnotated.href    = src;
+    btnDlAnnotated.style.display = '';
+  } else {
+    annotatedImg.src = previewImg.src;
+    btnDlAnnotated.style.display = 'none';
+  }
+
+  // Bảng kết quả
+  resultTbody.innerHTML = '';
+  if (data.detections.length === 0) {
+    resultTbody.innerHTML = `
+      <tr><td colspan="4" class="empty-state">
+        🔍 Không phát hiện đối tượng nào. Thử ảnh khác hoặc giảm ngưỡng confidence.
+      </td></tr>`;
+  } else {
+    // Sắp xếp theo confidence giảm dần
+    const sorted = [...data.detections].sort((a, b) => b.confidence - a.confidence);
+    sorted.forEach((d, i) => {
+      const pct = (d.confidence * 100).toFixed(1);
+      const barW = d.confidence * 100;
+      // Màu bar theo confidence
+      const barColor = d.confidence >= 0.75 ? '#22c55e'
+                     : d.confidence >= 0.50 ? '#f59e0b' : '#ef4444';
+      resultTbody.innerHTML += `
+        <tr>
+          <td style="color:var(--muted);font-size:.8rem">${i + 1}</td>
+          <td><span class="label-badge">${d.label}</span></td>
+          <td>
+            <div class="conf-wrap">
+              <div class="conf-bar-bg">
+                <div class="conf-bar" style="width:${barW}%;background:${barColor}"></div>
+              </div>
+              <span class="conf-text">${pct}%</span>
+            </div>
+          </td>
+          <td><span class="bbox">[${d.bbox.join(', ')}]</span></td>
+        </tr>`;
+    });
+  }
+
+  resultSection.style.display = 'block';
+  resultSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ── Tải kết quả JSON ─────────────────────────────────────────────
+btnDownloadJSON.addEventListener('click', () => {
+  if (!lastResult) return;
+  const exportData = {
+    model_name:         lastResult.model_name,
+    object_count:       lastResult.object_count,
+    processing_time_ms: lastResult.processing_time_ms,
+    detections:         lastResult.detections,
+  };
+  const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = `imgpk_result_${Date.now()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+// ── Helpers ──────────────────────────────────────────────────────
+function showError(msg) {
+  errorBox.textContent     = '⚠️ ' + msg;
+  errorBox.style.display   = 'block';
+}
+function hideError() {
+  errorBox.style.display = 'none';
+}
+function formatSize(bytes) {
+  if (bytes < 1024)       return bytes + ' B';
+  if (bytes < 1024*1024)  return (bytes/1024).toFixed(1) + ' KB';
+  return (bytes/(1024*1024)).toFixed(1) + ' MB';
+}
+
+// ── Init ─────────────────────────────────────────────────────────
+checkHealth();
+</script>
+</body>
+</html>

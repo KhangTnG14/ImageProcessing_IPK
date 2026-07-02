@@ -58,9 +58,14 @@ ImgPK/
 └── requirements.txt
 ```
 
+Cách chạy:
+
+- uvicorn api.main:app --reload --host 0.0.0.0 --port 8000
+
 Các đường truy cập:
 
 1. http://0.0.0.0:8000
 2. http://localhost:8000/docs
 3. http://localhost:8000/health
 4. http://localhost:8000/models
+5. http://localhost:8000/
