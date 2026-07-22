@@ -58,6 +58,17 @@ ImgPK/
 └── requirements.txt
 ```
 
+- pip uninstall opencv-python opencv-python-headless -y
+- pip install opencv-python==4.10.0.84
+
+
+Vào môi trường Venv:
+- .venv\Scripts\activate.bat
+
+Thoát:
+- deactivate
+
+
 Cách chạy:
 
 - uvicorn api.main:app --reload --host 0.0.0.0 --port 8000
